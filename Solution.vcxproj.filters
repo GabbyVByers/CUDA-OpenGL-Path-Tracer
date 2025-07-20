@@ -18,26 +18,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
-    </CudaCompile>
-    <CudaCompile Include="InteropRenderer.h">
-      <Filter>Header Files</Filter>
-    </CudaCompile>
-    <CudaCompile Include="kernel.h">
-      <Filter>Header Files</Filter>
-    </CudaCompile>
-    <CudaCompile Include="quaternions.h">
-      <Filter>Header Files</Filter>
-    </CudaCompile>
-    <CudaCompile Include="vec3.h">
-      <Filter>Header Files</Filter>
-    </CudaCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="glad.c">
-      <Filter>Source Files\OpenGL</Filter>
-    </ClCompile>
     <ClCompile Include="imgui\imgui.cpp">
       <Filter>Source Files\ImGui</Filter>
     </ClCompile>
@@ -58,6 +38,9 @@
     </ClCompile>
     <ClCompile Include="imgui\imgui_widgets.cpp">
       <Filter>Source Files\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\glad.c">
+      <Filter>Source Files\OpenGL</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -88,5 +71,25 @@
     <ClInclude Include="imgui\imstb_truetype.h">
       <Filter>Header Files\ImGui</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="Source\main.cpp">
+      <Filter>Source Files</Filter>
+    </CudaCompile>
+    <CudaCompile Include="Source\vec3.h">
+      <Filter>Header Files</Filter>
+    </CudaCompile>
+    <CudaCompile Include="Source\random.h">
+      <Filter>Header Files</Filter>
+    </CudaCompile>
+    <CudaCompile Include="Source\quaternions.h">
+      <Filter>Header Files</Filter>
+    </CudaCompile>
+    <CudaCompile Include="Source\kernel.h">
+      <Filter>Header Files</Filter>
+    </CudaCompile>
+    <CudaCompile Include="Source\InteropRenderer.h">
+      <Filter>Header Files</Filter>
+    </CudaCompile>
   </ItemGroup>
 </Project>
