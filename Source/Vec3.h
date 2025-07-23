@@ -45,6 +45,12 @@ struct vec3
 		return *this;
 	}
 
+	__host__ __device__ vec3& operator *= (const vec3& vec)
+	{
+		x = x * vec.x; y = y * vec.y; z = z * vec.z;
+		return *this;
+	}
+
 	__host__ __device__ vec3& operator *= (const float& value)
 	{
 		x = x * value; y = y * value; z = z * value;
@@ -81,3 +87,7 @@ __host__ __device__ inline void normalize(vec3& vec)
 	vec /= sqrt(lengthSq);
 }
 
+__host__ __device__ inline vec3 multiply(const vec3& a, const vec3& b)
+{
+	return { a.x * a.x, a.y * a.y, a.z * a.z };
+}

@@ -5,21 +5,22 @@
 #include "Vec3.h"
 #include "Quaternions.h"
 #include "DataStructures.h"
+#include "Random.h"
 #include <cfloat>
 
 using uint8 = unsigned char;
 
-__device__ inline hitInfo raySpheresIntersection(const Ray& ray, const Sphere* spheres, const int& numSpheres)
+__device__ inline hitInfo raySpheresIntersection(const Ray& ray, const Sphere* devSpheres, const int& numSpheres)
 {
     hitInfo info = { false };
     float closest_t = FLT_MAX;
     
     for (int i = 0; i < numSpheres; i++)
     {
-        vec3 V = ray.origin - spheres[i].position;
+        vec3 V = ray.origin - devSpheres[i].position;
         float a = dot(ray.direction, ray.direction);
         float b = 2.0f * dot(V, ray.direction);
-        float c = dot(V, V) - (spheres[i].radius * spheres[i].radius);
+        float c = dot(V, V) - (devSpheres[i].radius * devSpheres[i].radius);
 
         float discriminant = (b * b) - (4.0f * a * c);
         if (discriminant <= 0.0f)
@@ -37,9 +38,10 @@ __device__ inline hitInfo raySpheresIntersection(const Ray& ray, const Sphere* s
         if (t < closest_t)
         {
             closest_t = t;
-            info.hitColor = spheres[i].color;
+            info.didHitLightSource = devSpheres[i].isLightSource;
+            info.hitColor = devSpheres[i].color;
             info.hitLocation = ray.origin + (ray.direction * t);
-            info.hitNormal = info.hitLocation - spheres[i].position;
+            info.hitNormal = info.hitLocation - devSpheres[i].position;
             normalize(info.hitNormal);
         }
     }
@@ -47,43 +49,70 @@ __device__ inline hitInfo raySpheresIntersection(const Ray& ray, const Sphere* s
     return info;
 }
 
+__device__ inline vec3 calculateIncomingLight(Ray ray,
+                                              const Sphere* devSpheres,
+                                              const int& numSpheres,
+                                              const int& maxBounceLimit,
+                                              uint32& randomState)
+{
+    vec3 rayColor = { 1.0f, 1.0f, 1.0f };
+    vec3 incomingLight = { 0.0f, 0.0f, 0.0f };
+
+    for (int i = 0; i < maxBounceLimit; i++)
+    {
+        hitInfo info = raySpheresIntersection(ray, devSpheres, numSpheres);
+
+        if (!info.didHit)
+            break;
+
+        if (info.didHitLightSource)
+        {
+            incomingLight = multiply(rayColor, info.hitColor);
+            break;
+        }
+
+        rayColor *= info.hitColor;
+
+        ray.origin = info.hitLocation;
+        ray.direction = randomHemisphereDirection(info.hitNormal, randomState);
+    }
+
+    return incomingLight;
+}
+
 __global__ inline void renderKernel(uchar4* pixels,
                                     int width,
                                     int height,
                                     Sphere* devSpheres,
                                     int numSpheres,
-                                    Camera camera)
+                                    Camera camera,
+                                    int raysPerPixel,
+                                    int maxBounceLimit)
 {
     int x = blockIdx.x * blockDim.x + threadIdx.x;
     int y = blockIdx.y * blockDim.y + threadIdx.y;
     if (x >= width || y >= height) return;
 
     int idx = y * width + x;
+    uint32 randomState = idx;
 
     float u = ((x / (float)width) * 2.0f - 1.0f) * (width / (float)height);
     float v = (y / (float)height) * 2.0f - 1.0f;
 
-    Ray ray =
-    {
-        camera.position,
-        (camera.direction * camera.depth) + (camera.up * v) + ((camera.direction * camera.up) * u)
-    };
+    vec3 incomingLight = { 0.0f, 0.0f, 0.0f };
+    Ray ray = { camera.position, (camera.direction * camera.depth) + (camera.up * v) + (camera.right * u) };
     normalize(ray.direction);
-
-    hitInfo info = raySpheresIntersection(ray, devSpheres, numSpheres);
-
-    if (info.didHit)
+    for (int i = 0; i < raysPerPixel; i++)
     {
-        uint8 r = info.hitColor.x * 255.0f;
-        uint8 g = info.hitColor.y * 255.0f;
-        uint8 b = info.hitColor.z * 255.0f;
-        pixels[idx] = make_uchar4(r, g, b, 255);
-        return;
+        incomingLight += calculateIncomingLight(ray, devSpheres, numSpheres, maxBounceLimit, randomState);
     }
-    else
-    {
-        pixels[idx] = make_uchar4(0, 0, 0, 255);
-        return;
-    }
+    incomingLight /= raysPerPixel;
+
+    uint8 r = incomingLight.x * 255.0f;
+    uint8 g = incomingLight.y * 255.0f;
+    uint8 b = incomingLight.z * 255.0f;
+
+    pixels[idx] = make_uchar4(r, g, b, 255);
+    return;
 }
 

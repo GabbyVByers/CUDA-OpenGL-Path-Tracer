@@ -94,9 +94,9 @@ public:
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
-        float scale = 2.0f;
+        float scale = 1.75f;
         io.FontGlobalScale = scale;
-        io.IniFilename = nullptr;
+        //io.IniFilename = nullptr;
         ImGui::GetStyle().ScaleAllSizes(scale);
         ImGui::StyleColorsDark();
         ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -182,7 +182,11 @@ public:
         glBindVertexArray(0);
     }
 
-    void launchCudaKernel(Sphere* devSpheres, int numSpheres, Camera camera)
+    void launchCudaKernel(Sphere* devSpheres,
+                          int numSpheres,
+                          Camera camera,
+                          int raysPerPixel,
+                          int maxBounceLimit)
     {
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
             glfwSetWindowShouldClose(window, true);
@@ -191,7 +195,14 @@ public:
         size_t size;
         cudaGraphicsMapResources(1, &cudaPBO, 0);
         cudaGraphicsResourceGetMappedPointer((void**)&devPtr, &size, cudaPBO);
-        renderKernel <<<grid, block>>> (devPtr, width, height, devSpheres, numSpheres, camera);
+        renderKernel <<<grid, block>>> (devPtr,
+                                        width,
+                                        height,
+                                        devSpheres,
+                                        numSpheres,
+                                        camera,
+                                        raysPerPixel,
+                                        maxBounceLimit);
     }
 
     void processKeyboardInput(Camera& camera)
@@ -245,15 +256,14 @@ public:
 
                 camera.direction = rotate(camera.direction, up, magin_num * -mouseRelX);
                 camera.up = rotate(camera.up, up, magin_num * -mouseRelX);
-
-                vec3 right = camera.direction * camera.up;
-                camera.direction = rotate(camera.direction, right, magin_num * -mouseRelY);
-                camera.up = rotate(camera.up, right, magin_num * -mouseRelY);
+                camera.right = camera.direction * camera.up;
+                camera.direction = rotate(camera.direction, camera.right, magin_num * -mouseRelY);
+                camera.up = rotate(camera.up, camera.right, magin_num * -mouseRelY);
             }
         }
     }
 
-    void renderTexturedQuad()
+    void renderTexturedQuad(int& raysPerPixel, int& maxBounceLimit, Camera& camera)
     {
         cudaGraphicsUnmapResources(1, &cudaPBO, 0);
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
@@ -270,6 +280,10 @@ public:
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         ImGui::Begin("Debugger");
+        ImGui::SliderInt("Rays Per Pixel", &raysPerPixel, 0, 15);
+        ImGui::SliderInt("Max Bounce Limit", &maxBounceLimit, 0, 15);
+        ImGui::Text("Camera Position x:%.2f, y:%.2f, z:%.2f", camera.position.x, camera.position.y, camera.position.z);
+        ImGui::Text("Camera Direction x:%.2f, y:%.2f, z:%.2f", camera.direction.x, camera.direction.y, camera.direction.z);
         ImGui::End();
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
